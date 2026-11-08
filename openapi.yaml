@@ -1,0 +1,402 @@
+openapi: 3.0.0
+paths:
+  /:
+    get:
+      operationId: AppController_getHello
+      parameters: []
+      responses:
+        "200":
+          description: ""
+      tags:
+        - App
+  /books:
+    post:
+      operationId: BooksController_create
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookDto"
+      responses:
+        "201":
+          description: Buku berhasil dibuat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookResponseDto"
+        "400":
+          description: Body tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
+        "409":
+          description: ISBN duplikat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
+      summary: Tambah satu buku
+      tags:
+        - books
+    get:
+      operationId: BooksController_findAll
+      parameters: []
+      responses:
+        "200":
+          description: Daftar buku
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BookResponseDto"
+      summary: Ambil seluruh daftar buku
+      tags:
+        - books
+  /books/bulk:
+    post:
+      description: Semua berhasil → commit (201). Satu gagal (mis. ISBN duplikat) →
+        rollback total (409).
+      operationId: BooksController_createBulk
+      parameters: []
+      requestBody:
+        required: true
+        description: Array buku
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/CreateBookDto"
+      responses:
+        "201":
+          description: Semua buku tersimpan
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BookResponseDto"
+        "400":
+          description: Elemen array/body tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
+        "409":
+          description: ISBN duplikat → rollback seluruh batch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
+      summary: Tambah banyak buku dalam satu transaksi (atomik)
+      tags:
+        - books
+  /books/{id}:
+    get:
+      operationId: BooksController_findOne
+      parameters:
+        - name: id
+          required: true
+          in: path
+          description: ID buku
+          schema:
+            example: 1
+            type: number
+      responses:
+        "200":
+          description: Detail buku
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookResponseDto"
+        "400":
+          description: Id tidak valid (bukan angka)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
+        "404":
+          description: Buku tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
+      summary: Ambil detail satu buku
+      tags:
+        - books
+    put:
+      operationId: BooksController_replace
+      parameters:
+        - name: id
+          required: true
+          in: path
+          description: ID buku
+          schema:
+            example: 1
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookDto"
+      responses:
+        "200":
+          description: Buku diperbarui
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookResponseDto"
+        "400":
+          description: Id/body tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
+        "404":
+          description: Buku tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
+        "409":
+          description: ISBN duplikat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
+      summary: Ganti seluruh data buku
+      tags:
+        - books
+    patch:
+      operationId: BooksController_update
+      parameters:
+        - name: id
+          required: true
+          in: path
+          description: ID buku
+          schema:
+            example: 1
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBookDto"
+      responses:
+        "200":
+          description: Buku diperbarui
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookResponseDto"
+        "400":
+          description: Id/body tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
+        "404":
+          description: Buku tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
+        "409":
+          description: ISBN duplikat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
+      summary: Ubah sebagian field buku
+      tags:
+        - books
+    delete:
+      operationId: BooksController_remove
+      parameters:
+        - name: id
+          required: true
+          in: path
+          description: ID buku
+          schema:
+            example: 1
+            type: number
+      responses:
+        "204":
+          description: Buku dihapus (tanpa body)
+        "400":
+          description: Id tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
+        "404":
+          description: Buku tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponseDto"
+      summary: Hapus buku
+      tags:
+        - books
+info:
+  title: API Perpustakaan
+  description: Dokumentasi REST API Sistem Perpustakaan (modul books).
+  version: 1.0.0
+  contact: {}
+tags: []
+servers: []
+components:
+  schemas:
+    CreateBookDto:
+      type: object
+      properties:
+        title:
+          type: string
+          example: Laskar Pelangi
+          description: Judul buku (wajib)
+        author:
+          type: string
+          example: Andrea Hirata
+          description: Penulis (wajib)
+        isbn:
+          type: string
+          example: 978-979-3062-79-2
+          description: ISBN unik (wajib)
+        year:
+          type: number
+          example: 2005
+          minimum: 1000
+          maximum: 2100
+          description: Tahun terbit
+        category:
+          type: string
+          example: Fiksi
+          description: Kategori
+        stock:
+          type: number
+          example: 5
+          minimum: 0
+          description: Stok (≥ 0)
+        available:
+          type: number
+          example: 3
+          minimum: 0
+          description: Tersedia (≥ 0)
+      required:
+        - title
+        - author
+        - isbn
+    BookResponseDto:
+      type: object
+      properties:
+        id:
+          type: number
+          example: 1
+          description: ID buku (primary key)
+        isbn:
+          type: string
+          example: 978-602-123-456-7
+          description: ISBN (unik)
+        title:
+          type: string
+          example: Pemrograman Algoritma dan Struktur Data
+          description: Judul buku
+        author:
+          type: string
+          example: Budi Santoso
+          description: Penulis
+        year:
+          type: object
+          example: 2021
+          nullable: true
+          description: Tahun terbit
+        category:
+          type: object
+          example: Informatika
+          nullable: true
+          description: Kategori
+        stock:
+          type: number
+          example: 5
+          description: Jumlah stok (default 0)
+        available:
+          type: number
+          example: 3
+          description: Jumlah tersedia (default 1)
+      required:
+        - id
+        - isbn
+        - title
+        - author
+        - stock
+        - available
+    ErrorResponseDto:
+      type: object
+      properties:
+        statusCode:
+          type: number
+          example: 400
+          description: Kode status HTTP
+        error:
+          type: string
+          example: Bad Request
+          description: Nama status HTTP
+        message:
+          type: string
+          example: title wajib diisi
+          description: Pesan error (string; validasi array diratakan)
+        path:
+          type: string
+          example: /books
+          description: Path request
+        timestamp:
+          type: string
+          example: 2026-11-08T16:01:11.897Z
+          description: Waktu error (ISO 8601)
+      required:
+        - statusCode
+        - error
+        - message
+        - path
+        - timestamp
+    UpdateBookDto:
+      type: object
+      properties:
+        title:
+          type: string
+          example: Laskar Pelangi
+          description: Judul buku (wajib)
+        author:
+          type: string
+          example: Andrea Hirata
+          description: Penulis (wajib)
+        isbn:
+          type: string
+          example: 978-979-3062-79-2
+          description: ISBN unik (wajib)
+        year:
+          type: number
+          example: 2005
+          minimum: 1000
+          maximum: 2100
+          description: Tahun terbit
+        category:
+          type: string
+          example: Fiksi
+          description: Kategori
+        stock:
+          type: number
+          example: 5
+          minimum: 0
+          description: Stok (≥ 0)
+        available:
+          type: number
+          example: 3
+          minimum: 0
+          description: Tersedia (≥ 0)

@@ -1,42 +1,43 @@
 # Sistem Perpustakaan API
 
-REST API untuk Sistem Perpustakaan yang dibangun dengan **NestJS** dan TypeScript, terhubung ke **PostgreSQL** melalui **TypeORM**. Modul `books` menyediakan operasi CRUD, endpoint `POST /books/bulk` (satu transaksi database), validasi DTO, serta penanganan error terformat seragam.
+REST API modul **books** (Sistem Perpustakaan) berbasis **NestJS** + TypeScript, terhubung ke **PostgreSQL** melalui **TypeORM** (`synchronize: false`, skema via migration). Menyediakan CRUD, `POST /books/bulk` transaksional (commit/rollback), validasi DTO, error seragam, serta dokumentasi OpenAPI.
 
-> Detail bukti (struktur tabel/constraint, migration, contoh error 400/404/409, transaksi bulk, dan ringkasan test) ada di [`docs/bukti-database.md`](docs/bukti-database.md).
+## Dokumentasi & bukti
+- Spesifikasi OpenAPI: [`openapi.yaml`](openapi.yaml)
+- Swagger UI (saat server berjalan): `http://localhost:3000/api/docs`
+- Matriks pengujian: [`docs/matriks-pengujian.md`](docs/matriks-pengujian.md)
+- Laporan: [`docs/laporan.md`](docs/laporan.md)
+- Hasil Newman: [`docs/hasil-newman.txt`](docs/hasil-newman.txt)
+- Bukti database & transaksi: [`docs/bukti-database.md`](docs/bukti-database.md)
+- Postman (Newman): [`postman/perpustakaan-api.postman_collection.json`](postman/perpustakaan-api.postman_collection.json)
 
 ## Fitur utama
-
-- **Database**: PostgreSQL + TypeORM, `synchronize: false`, perubahan skema lewat migration.
-- **Validasi**: `class-validator` + `class-transformer` (global `ValidationPipe`, `whitelist` + `transform`). `title`, `author`, `isbn` wajib; `year` integer berbatas wajar; `stock`/`available` integer ≥ 0. `:id` divalidasi `ParseIntPipe`.
+- **Database**: PostgreSQL + TypeORM, perubahan skema lewat migration.
+- **Validasi**: global `ValidationPipe` (`whitelist` + `transform`, `class-validator`). `title`/`author`/`isbn` wajib; `year` 1000–2100; `stock`/`available` ≥ 0. `:id` divalidasi `ParseIntPipe`.
 - **Error seragam** (global `HttpExceptionFilter`): `{ statusCode, error, message, path, timestamp }` untuk 400/404/409/dll.
-- **409 Conflict**: pelanggaran `UNIQUE` PostgreSQL (ISBN duplikat, kode `23505`) dipetakan ke 409.
-- **Transaksi bulk**: `POST /books/bulk` menyimpan array buku secara atomik (semua berhasil → commit, satu gagal → rollback).
+- **409 Conflict**: `UNIQUE` PostgreSQL (ISBN duplikat, kode `23505`) → 409.
+- **Transaksi bulk**: `POST /books/bulk` atomik (satu gagal → rollback seluruh batch).
 
 ## Struktur folder (ringkas)
-
 ```
 src/
-├── main.ts                         # bootstrap + ValidationPipe + HttpExceptionFilter global
+├── main.ts                         # bootstrap + ValidationPipe + HttpExceptionFilter + Swagger /api/docs
 ├── app.module.ts                   # ConfigModule + TypeOrmModule.forRootAsync
 ├── data-source.ts                  # DataSource CLI TypeORM (migration)
-├── common/filters/
-│   └── http-exception.filter.ts    # format error seragam
-├── migrations/
-│   └── 1794150511860-CreateBooks.ts
+├── common/filters/http-exception.filter.ts
+├── common/dto/error-response.dto.ts
+├── migrations/1794150511860-CreateBooks.ts
 └── books/
-    ├── books.module.ts
     ├── books.controller.ts         # endpoint /books (+ /books/bulk)
     ├── books.service.ts            # logika bisnis (NotFoundException)
     ├── books.repository.ts         # TypeORM: CRUD + createBulk (transaksi, 23505→409)
-    ├── entities/book.entity.ts     # entity/tabel books
-    └── dto/
-        ├── create-book.dto.ts      # DTO POST & PUT
-        └── update-book.dto.ts      # DTO PATCH (PartialType)
+    ├── entities/book.entity.ts
+    └── dto/ (create|update|book-response)
+scripts/export-openapi.ts           # ekspor openapi.yaml (tanpa listen)
 ```
 
 ## Setup database
-
-Prasyarat: PostgreSQL berjalan (contoh lokal `localhost:5432`). Path `psql` di Windows: `C:\Program Files\PostgreSQL\18\bin\psql.exe`.
+Prasyarat: PostgreSQL berjalan (contoh `localhost:5432`). `psql` (Windows): `C:\Program Files\PostgreSQL\18\bin\psql.exe`.
 
 1. **Buat database** `perpustakaan` dan `perpustakaan_test` (sekali):
    ```powershell
@@ -46,50 +47,48 @@ Prasyarat: PostgreSQL berjalan (contoh lokal `localhost:5432`). Path `psql` di W
 2. **Salin konfigurasi env** dari contoh, lalu isi nilainya (jangan commit `.env`/`.env.test`):
    ```powershell
    Copy-Item .env.example .env
-   # opsional, untuk suite test: salin/isi .env.test dengan DB_NAME=perpustakaan_test
    ```
-   Variabel: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`.
+   Variabel: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`. (Suite test memakai `.env.test` dengan `DB_NAME=perpustakaan_test`.)
 3. **Pasang dependency & jalankan migration** (membuat tabel `books` + seed):
    ```bash
    npm install
    npm run migration:run
    ```
-   (Untuk database test: set `DB_NAME=perpustakaan_test` lalu `npm run migration:run`, atau biarkan suite e2e yang memakai `.env.test`.)
 
 ## Menjalankan aplikasi
-
 ```bash
-npm run start:dev    # mode watch (development) — http://localhost:3000
+npm run start:dev    # watch (development) — http://localhost:3000
 npm run build        # kompilasi ke dist/
 npm run start:prod   # jalankan hasil build
 ```
+Swagger UI: `http://localhost:3000/api/docs`.
 
 ## Daftar endpoint
-
-| Method | URL | Fungsi | Status sukses | Status gagal |
+| Method | URL | Fungsi | Sukses | Gagal |
 |---|---|---|---:|---|
-| `POST` | `/books` | Tambah satu buku | 201 | 400 (validasi), 409 (ISBN duplikat) |
-| `POST` | `/books/bulk` | Tambah banyak buku **dalam satu transaksi** (atomik) | 201 | 400 (validasi elemen), 409 (duplikat → rollback seluruh batch) |
-| `GET` | `/books` | Ambil seluruh daftar buku | 200 | — |
-| `GET` | `/books/:id` | Ambil detail satu buku | 200 | 400 (`:id` bukan angka), 404 |
-| `PUT` | `/books/:id` | Ganti seluruh data buku | 200 | 400, 404, 409 |
-| `PATCH` | `/books/:id` | Ubah sebagian field buku | 200 | 400, 404, 409 |
+| `POST` | `/books` | Tambah satu buku | 201 | 400, 409 |
+| `POST` | `/books/bulk` | Tambah banyak buku (transaksi atomik) | 201 | 400, 409 (rollback batch) |
+| `GET` | `/books` | Daftar buku | 200 | — |
+| `GET` | `/books/:id` | Detail buku | 200 | 400, 404 |
+| `PUT` | `/books/:id` | Ganti seluruh data | 200 | 400, 404, 409 |
+| `PATCH` | `/books/:id` | Ubah sebagian field | 200 | 400, 404, 409 |
 | `DELETE` | `/books/:id` | Hapus buku | 204 | 400, 404 |
 
-> Semua error berformat `{ statusCode, error, message, path, timestamp }`. Contoh respons 400/404/409: lihat [`docs/bukti-database.md`](docs/bukti-database.md#3-contoh-response-400-404-dan-409).
+> Error berformat `{ statusCode, error, message, path, timestamp }`. Detail/contoh: [`docs/bukti-database.md`](docs/bukti-database.md).
 
 ## Menjalankan test
+Semua perintah test (kecuali Newman) **tanpa server port 3000**. Integration/E2E hanya memakai `perpustakaan_test` (tidak menyentuh `perpustakaan`).
 
+| Perintah | Jenis | Keterangan |
+|---|---|---|
+| `npm test` | Unit | `src/**/*.spec.ts` (Jest, repo di-mock). |
+| `npm run test:integration` | Integration | `test/integration/*.integration-spec.ts` — service+repo asli+TypeORM ke `perpustakaan_test` (tanpa HTTP), `--runInBand`. |
+| `npm run test:e2e` | E2E | `test/*.e2e-spec.ts` via supertest ke `perpustakaan_test`. |
+| `npm run test:cov` | Coverage | Coverage unit (scope `jest.config.ts`). |
+| `npm run test:newman` | Newman | Jalankan koleksi `postman/perpustakaan-api.postman_collection.json` terhadap `http://localhost:3000` — **butuh server berjalan** (`npm run start:dev`). |
+
+## Menghasilkan ulang OpenAPI
 ```bash
-npm test              # unit test (Jest): src/**/*.spec.ts
-npm run test:e2e      # E2E (Jest + supertest): test/*.e2e-spec.ts
+npm run openapi:export
 ```
-
-- **Unit** — `src/books/books.service.spec.ts`: service diuji dengan repository di-mock.
-- **E2E** — dijalankan terhadap **`perpustakaan_test`** (dipaksa oleh `test/jest-setup.ts`, `NODE_ENV=test` + `.env.test`; `maxWorkers: 1`). `test/books.e2e-spec.ts` menguji alur CRUD; `test/books-failure.e2e-spec.ts` menguji skenario gagal (400/404/409) dan membuktikan **rollback** `POST /books/bulk` (batch gagal → tidak ada baris tersimpan).
-
-## Bukti pengujian
-
-- Dokumen bukti lengkap: [`docs/bukti-database.md`](docs/bukti-database.md)
-- Postman Collection: [`postman/crud.postman_collection.json`](postman/crud.postman_collection.json) (import ke Postman, `base_url` = `http://localhost:3000`, jalankan server lebih dulu)
-- Screenshot: folder [`screenshot/`](screenshot/) (CRUD, error 400/404/409, bulk sukses/rollback, hasil test, struktur tabel/migration).
+Menulis [`openapi.yaml`](openapi.yaml) ke root dengan membuat app Nest (tanpa `listen`) lalu menutupnya. Memerlukan koneksi DB sesuai `.env` (TypeORM diinisialisasi), tanpa menyentuh `.env`.

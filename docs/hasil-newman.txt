@@ -1,0 +1,82 @@
+newman
+
+Tugas 7 - Newman
+
+→ 1. POST /books valid -> 201 (simpan id)
+  POST http://localhost:3000/books [201 Created, 378B, 176ms]
+  √  status 201 Created
+  √  response berisi id dan isbn sesuai request
+
+→ 2. GET /books -> 200, array
+  GET http://localhost:3000/books [200 OK, 1.28kB, 16ms]
+  √  status 200 OK
+  √  response berupa array
+
+→ 3. GET /books/{id} -> 200
+  GET http://localhost:3000/books/123 [200 OK, 373B, 9ms]
+  √  status 200 OK
+  √  response adalah buku dengan id yang diminta
+
+→ 4. PUT /books/{id} -> 200
+  PUT http://localhost:3000/books/123 [200 OK, 385B, 17ms]
+  √  status 200 OK
+  √  data terganti seluruhnya
+
+→ 5. PATCH /books/{id} -> 200
+  PATCH http://localhost:3000/books/123 [200 OK, 387B, 10ms]
+  √  status 200 OK
+  √  hanya field yang dikirim berubah
+
+→ 6. POST /books/bulk 2 buku ISBN acak -> 201
+  POST http://localhost:3000/books/bulk [201 Created, 517B, 10ms]
+  √  status 201 Created
+  √  response array berisi 2 buku tersimpan
+
+→ 7. POST /books title kosong -> 400
+  POST http://localhost:3000/books [400 Bad Request, 370B, 6ms]
+  √  status 400 Bad Request
+  √  format error seragam
+
+→ 8. GET /books/abc -> 400
+  GET http://localhost:3000/books/abc [400 Bad Request, 403B, 3ms]
+  √  status 400 Bad Request (id tidak valid)
+  √  body error berisi statusCode 400
+
+→ 9. GET /books/999999 -> 404
+  GET http://localhost:3000/books/999999 [404 Not Found, 393B, 6ms]
+  √  status 404 Not Found
+  √  body error 404
+
+→ 10. POST /books ISBN sama dengan request 1 -> 409
+  POST http://localhost:3000/books [409 Conflict, 382B, 9ms]
+  √  status 409 Conflict
+  √  pesan konflik ISBN
+
+→ 11. POST /books/bulk ISBN baru + duplikat -> 409
+  POST http://localhost:3000/books/bulk [409 Conflict, 387B, 8ms]
+  √  status 409 Conflict (rollback batch)
+  √  body error konflik
+
+→ 12. DELETE /books/{id} -> 204
+  DELETE http://localhost:3000/books/123 [204 No Content, 134B, 7ms]
+  √  status 204 No Content
+
+┌─────────────────────────┬───────────────────┬──────────────────┐
+│                         │          executed │           failed │
+├─────────────────────────┼───────────────────┼──────────────────┤
+│              iterations │                 1 │                0 │
+├─────────────────────────┼───────────────────┼──────────────────┤
+│                requests │                12 │                0 │
+├─────────────────────────┼───────────────────┼──────────────────┤
+│            test-scripts │                12 │                0 │
+├─────────────────────────┼───────────────────┼──────────────────┤
+│      prerequest-scripts │                 3 │                0 │
+├─────────────────────────┼───────────────────┼──────────────────┤
+│              assertions │                23 │                0 │
+├─────────────────────────┴───────────────────┴──────────────────┤
+│ total run duration: 1278ms                                     │
+├────────────────────────────────────────────────────────────────┤
+│ total data received: 2.61kB (approx)                           │
+├────────────────────────────────────────────────────────────────┤
+│ average response time: 23ms [min: 3ms, max: 176ms, s.d.: 46ms] │
+└────────────────────────────────────────────────────────────────┘

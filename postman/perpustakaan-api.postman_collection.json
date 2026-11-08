@@ -1,0 +1,435 @@
+{
+  "info": {
+    "_postman_id": "b7e5a1c2-7d4f-4b8e-9c3a-1f2e3d4c5b6a",
+    "name": "Tugas 7 - Newman",
+    "description": "Pengujian endpoint perpustakaan-api (books). ISBN acak via pre-request; id/ISBN disimpan ke variable collection agar bisa dijalankan berulang.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3000" },
+    { "key": "book_id", "value": "" },
+    { "key": "isbn1", "value": "" },
+    { "key": "bulkIsbn1", "value": "" },
+    { "key": "bulkIsbn2", "value": "" },
+    { "key": "bulkNewIsbn", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. POST /books valid -> 201 (simpan id)",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('isbn1', '978-' + Date.now() + '-' + Math.floor(Math.random() * 100000));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201 Created', function () {",
+              "  pm.response.to.have.status(201);",
+              "});",
+              "pm.test('response berisi id dan isbn sesuai request', function () {",
+              "  var json = pm.response.json();",
+              "  pm.expect(json).to.have.property('id');",
+              "  pm.expect(json.id).to.be.a('number');",
+              "  pm.expect(json.isbn).to.eql(pm.collectionVariables.get('isbn1'));",
+              "  pm.expect(json.title).to.eql('Buku Newman');",
+              "  pm.collectionVariables.set('book_id', json.id);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Buku Newman\",\n  \"author\": \"Penguji\",\n  \"isbn\": \"{{isbn1}}\",\n  \"year\": 2024,\n  \"category\": \"Uji\",\n  \"stock\": 5,\n  \"available\": 5\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/books",
+          "host": ["{{base_url}}"],
+          "path": ["books"]
+        }
+      }
+    },
+    {
+      "name": "2. GET /books -> 200, array",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200 OK', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test('response berupa array', function () {",
+              "  var json = pm.response.json();",
+              "  pm.expect(json).to.be.an('array');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/books",
+          "host": ["{{base_url}}"],
+          "path": ["books"]
+        }
+      }
+    },
+    {
+      "name": "3. GET /books/{id} -> 200",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200 OK', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test('response adalah buku dengan id yang diminta', function () {",
+              "  var json = pm.response.json();",
+              "  pm.expect(json.id).to.eql(Number(pm.collectionVariables.get('book_id')));",
+              "  pm.expect(json).to.have.property('title');",
+              "  pm.expect(json).to.have.property('isbn');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/books/{{book_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["books", "{{book_id}}"]
+        }
+      }
+    },
+    {
+      "name": "4. PUT /books/{id} -> 200",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200 OK', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test('data terganti seluruhnya', function () {",
+              "  var json = pm.response.json();",
+              "  pm.expect(json.id).to.eql(Number(pm.collectionVariables.get('book_id')));",
+              "  pm.expect(json.title).to.eql('Buku Newman (PUT)');",
+              "  pm.expect(json.author).to.eql('Penguji PUT');",
+              "  pm.expect(json.isbn).to.eql(pm.collectionVariables.get('isbn1'));",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Buku Newman (PUT)\",\n  \"author\": \"Penguji PUT\",\n  \"isbn\": \"{{isbn1}}\",\n  \"year\": 2025,\n  \"category\": \"Uji\",\n  \"stock\": 10,\n  \"available\": 10\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/books/{{book_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["books", "{{book_id}}"]
+        }
+      }
+    },
+    {
+      "name": "5. PATCH /books/{id} -> 200",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 200 OK', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test('hanya field yang dikirim berubah', function () {",
+              "  var json = pm.response.json();",
+              "  pm.expect(json.id).to.eql(Number(pm.collectionVariables.get('book_id')));",
+              "  pm.expect(json.title).to.eql('Buku Newman (PATCH)');",
+              "  pm.expect(json.author).to.eql('Penguji PUT');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Buku Newman (PATCH)\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/books/{{book_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["books", "{{book_id}}"]
+        }
+      }
+    },
+    {
+      "name": "6. POST /books/bulk 2 buku ISBN acak -> 201",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var ts = Date.now();",
+              "pm.collectionVariables.set('bulkIsbn1', '978-bulk1-' + ts + '-' + Math.floor(Math.random() * 100000));",
+              "pm.collectionVariables.set('bulkIsbn2', '978-bulk2-' + ts + '-' + Math.floor(Math.random() * 100000));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 201 Created', function () {",
+              "  pm.response.to.have.status(201);",
+              "});",
+              "pm.test('response array berisi 2 buku tersimpan', function () {",
+              "  var json = pm.response.json();",
+              "  pm.expect(json).to.be.an('array').with.lengthOf(2);",
+              "  pm.expect(json[0]).to.have.property('id');",
+              "  pm.expect(json[1]).to.have.property('id');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "[\n  {\n    \"title\": \"Buku Bulk 1\",\n    \"author\": \"A\",\n    \"isbn\": \"{{bulkIsbn1}}\"\n  },\n  {\n    \"title\": \"Buku Bulk 2\",\n    \"author\": \"B\",\n    \"isbn\": \"{{bulkIsbn2}}\",\n    \"year\": 2024,\n    \"stock\": 2,\n    \"available\": 2\n  }\n]"
+        },
+        "url": {
+          "raw": "{{base_url}}/books/bulk",
+          "host": ["{{base_url}}"],
+          "path": ["books", "bulk"]
+        }
+      }
+    },
+    {
+      "name": "7. POST /books title kosong -> 400",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 400 Bad Request', function () {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "pm.test('format error seragam', function () {",
+              "  var json = pm.response.json();",
+              "  pm.expect(json.statusCode).to.eql(400);",
+              "  pm.expect(json).to.have.property('error');",
+              "  pm.expect(json).to.have.property('message');",
+              "  pm.expect(json).to.have.property('path', '/books');",
+              "  pm.expect(json).to.have.property('timestamp');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"\",\n  \"author\": \"Penulis\",\n  \"isbn\": \"978-invalid-title\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/books",
+          "host": ["{{base_url}}"],
+          "path": ["books"]
+        }
+      }
+    },
+    {
+      "name": "8. GET /books/abc -> 400",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 400 Bad Request (id tidak valid)', function () {",
+              "  pm.response.to.have.status(400);",
+              "});",
+              "pm.test('body error berisi statusCode 400', function () {",
+              "  var json = pm.response.json();",
+              "  pm.expect(json.statusCode).to.eql(400);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/books/abc",
+          "host": ["{{base_url}}"],
+          "path": ["books", "abc"]
+        }
+      }
+    },
+    {
+      "name": "9. GET /books/999999 -> 404",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 404 Not Found', function () {",
+              "  pm.response.to.have.status(404);",
+              "});",
+              "pm.test('body error 404', function () {",
+              "  var json = pm.response.json();",
+              "  pm.expect(json.statusCode).to.eql(404);",
+              "  pm.expect(json.error).to.eql('Not Found');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/books/999999",
+          "host": ["{{base_url}}"],
+          "path": ["books", "999999"]
+        }
+      }
+    },
+    {
+      "name": "10. POST /books ISBN sama dengan request 1 -> 409",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 409 Conflict', function () {",
+              "  pm.response.to.have.status(409);",
+              "});",
+              "pm.test('pesan konflik ISBN', function () {",
+              "  var json = pm.response.json();",
+              "  pm.expect(json.statusCode).to.eql(409);",
+              "  pm.expect(json.error).to.eql('Conflict');",
+              "  pm.expect(json.message).to.include('ISBN');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Duplikat ISBN\",\n  \"author\": \"Penguji\",\n  \"isbn\": \"{{isbn1}}\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/books",
+          "host": ["{{base_url}}"],
+          "path": ["books"]
+        }
+      }
+    },
+    {
+      "name": "11. POST /books/bulk ISBN baru + duplikat -> 409",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.collectionVariables.set('bulkNewIsbn', '978-bulknew-' + Date.now() + '-' + Math.floor(Math.random() * 100000));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 409 Conflict (rollback batch)', function () {",
+              "  pm.response.to.have.status(409);",
+              "});",
+              "pm.test('body error konflik', function () {",
+              "  var json = pm.response.json();",
+              "  pm.expect(json.statusCode).to.eql(409);",
+              "  pm.expect(json.error).to.eql('Conflict');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "[\n  {\n    \"title\": \"Bulk Baru (akan rollback)\",\n    \"author\": \"C\",\n    \"isbn\": \"{{bulkNewIsbn}}\"\n  },\n  {\n    \"title\": \"Bulk Duplikat\",\n    \"author\": \"D\",\n    \"isbn\": \"{{isbn1}}\"\n  }\n]"
+        },
+        "url": {
+          "raw": "{{base_url}}/books/bulk",
+          "host": ["{{base_url}}"],
+          "path": ["books", "bulk"]
+        }
+      }
+    },
+    {
+      "name": "12. DELETE /books/{id} -> 204",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('status 204 No Content', function () {",
+              "  pm.response.to.have.status(204);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "url": {
+          "raw": "{{base_url}}/books/{{book_id}}",
+          "host": ["{{base_url}}"],
+          "path": ["books", "{{book_id}}"]
+        }
+      }
+    }
+  ]
+}

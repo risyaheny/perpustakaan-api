@@ -12,7 +12,16 @@ import {
   Post,
   Put,
 } from '@nestjs/common';
+import {
+  ApiBody,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { ErrorResponseDto } from '../common/dto/error-response.dto';
 import { BooksService } from './books.service';
+import { BookResponseDto } from './dto/book-response.dto';
 import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
 
@@ -20,24 +29,50 @@ import { UpdateBookDto } from './dto/update-book.dto';
  * Endpoint HTTP untuk buku. Semua status code dan body diproses
  * di sini; logika bisnis ada di BooksService.
  */
+@ApiTags('books')
 @Controller('books')
 export class BooksController {
-  // Dependency Injection: controller menerima Service lewat constructor.
-  // Nest menyuntikkan BooksService (satu-satunya provider yang dibutuhkan
-  // di lapisan ini) — controller tidak perlu tahu cara kerja service.
   constructor(private readonly booksService: BooksService) {}
 
-  // POST /books -> 201 Created
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Tambah satu buku' })
+  @ApiBody({ type: CreateBookDto })
+  @ApiResponse({
+    status: 201,
+    description: 'Buku berhasil dibuat',
+    type: BookResponseDto,
+  })
+  @ApiResponse({ status: 400, description: 'Body tidak valid', type: ErrorResponseDto })
+  @ApiResponse({ status: 409, description: 'ISBN duplikat', type: ErrorResponseDto })
   create(@Body() dto: CreateBookDto) {
     return this.booksService.create(dto);
   }
 
-  // POST /books/bulk -> 201 Created (satu transaksi: semua-atau-tidak-sama-sekali)
   // Didefinisikan sebelum /books/:id agar path "bulk" tidak ditangkap sebagai :id.
   @Post('bulk')
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Tambah banyak buku dalam satu transaksi (atomik)',
+    description:
+      'Semua berhasil → commit (201). Satu gagal (mis. ISBN duplikat) → rollback total (409).',
+  })
+  @ApiBody({ type: [CreateBookDto], description: 'Array buku' })
+  @ApiResponse({
+    status: 201,
+    description: 'Semua buku tersimpan',
+    type: [BookResponseDto],
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Elemen array/body tidak valid',
+    type: ErrorResponseDto,
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'ISBN duplikat → rollback seluruh batch',
+    type: ErrorResponseDto,
+  })
   createBulk(
     @Body(
       new ParseArrayPipe({
@@ -51,35 +86,59 @@ export class BooksController {
     return this.booksService.createBulk(dtos);
   }
 
-  // GET /books -> 200
   @Get()
+  @ApiOperation({ summary: 'Ambil seluruh daftar buku' })
+  @ApiResponse({
+    status: 200,
+    description: 'Daftar buku',
+    type: [BookResponseDto],
+  })
   findAll() {
     return this.booksService.findAll();
   }
 
-  // GET /books/:id -> 200 atau 404
   @Get(':id')
+  @ApiOperation({ summary: 'Ambil detail satu buku' })
+  @ApiParam({ name: 'id', type: Number, example: 1, description: 'ID buku' })
+  @ApiResponse({ status: 200, description: 'Detail buku', type: BookResponseDto })
+  @ApiResponse({ status: 400, description: 'Id tidak valid (bukan angka)', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'Buku tidak ditemukan', type: ErrorResponseDto })
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.booksService.findOne(id);
   }
 
-  // PUT /books/:id -> 200 (ganti seluruh data) atau 404
   @Put(':id')
+  @ApiOperation({ summary: 'Ganti seluruh data buku' })
+  @ApiParam({ name: 'id', type: Number, example: 1, description: 'ID buku' })
+  @ApiBody({ type: CreateBookDto })
+  @ApiResponse({ status: 200, description: 'Buku diperbarui', type: BookResponseDto })
+  @ApiResponse({ status: 400, description: 'Id/body tidak valid', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'Buku tidak ditemukan', type: ErrorResponseDto })
+  @ApiResponse({ status: 409, description: 'ISBN duplikat', type: ErrorResponseDto })
   replace(@Param('id', ParseIntPipe) id: number, @Body() dto: CreateBookDto) {
     return this.booksService.replace(id, dto);
   }
 
-  // PATCH /books/:id -> 200 (ubah sebagian) atau 404
   @Patch(':id')
+  @ApiOperation({ summary: 'Ubah sebagian field buku' })
+  @ApiParam({ name: 'id', type: Number, example: 1, description: 'ID buku' })
+  @ApiBody({ type: UpdateBookDto })
+  @ApiResponse({ status: 200, description: 'Buku diperbarui', type: BookResponseDto })
+  @ApiResponse({ status: 400, description: 'Id/body tidak valid', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'Buku tidak ditemukan', type: ErrorResponseDto })
+  @ApiResponse({ status: 409, description: 'ISBN duplikat', type: ErrorResponseDto })
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateBookDto) {
     return this.booksService.update(id, dto);
   }
 
-  // DELETE /books/:id -> 204 No Content (tanpa body) atau 404
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Hapus buku' })
+  @ApiParam({ name: 'id', type: Number, example: 1, description: 'ID buku' })
+  @ApiResponse({ status: 204, description: 'Buku dihapus (tanpa body)' })
+  @ApiResponse({ status: 400, description: 'Id tidak valid', type: ErrorResponseDto })
+  @ApiResponse({ status: 404, description: 'Buku tidak ditemukan', type: ErrorResponseDto })
   remove(@Param('id', ParseIntPipe) id: number) {
-    // Return promise-nya supaya Nest menunggu selesai (atau 404) sebelum merespons.
     return this.booksService.remove(id);
   }
 }
