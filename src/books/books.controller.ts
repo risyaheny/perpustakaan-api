@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseArrayPipe,
   ParseIntPipe,
   Patch,
   Post,
@@ -31,6 +32,23 @@ export class BooksController {
   @HttpCode(HttpStatus.CREATED)
   create(@Body() dto: CreateBookDto) {
     return this.booksService.create(dto);
+  }
+
+  // POST /books/bulk -> 201 Created (satu transaksi: semua-atau-tidak-sama-sekali)
+  // Didefinisikan sebelum /books/:id agar path "bulk" tidak ditangkap sebagai :id.
+  @Post('bulk')
+  @HttpCode(HttpStatus.CREATED)
+  createBulk(
+    @Body(
+      new ParseArrayPipe({
+        items: CreateBookDto,
+        whitelist: true,
+        forbidNonWhitelisted: false,
+      }),
+    )
+    dtos: CreateBookDto[],
+  ) {
+    return this.booksService.createBulk(dtos);
   }
 
   // GET /books -> 200
@@ -61,6 +79,7 @@ export class BooksController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseIntPipe) id: number) {
-    this.booksService.remove(id);
+    // Return promise-nya supaya Nest menunggu selesai (atau 404) sebelum merespons.
+    return this.booksService.remove(id);
   }
 }

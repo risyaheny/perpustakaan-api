@@ -1,0 +1,487 @@
+{
+  "info": {
+    "_postman_id": "e1b30713-7e35-49a6-b367-2db83c65d417",
+    "name": "Tugas 5 - CRUD NestJS Perpustakaan",
+    "description": "Collection untuk menguji endpoint CRUD modul books NestJS. Jalankan server dulu dengan `npm run start:dev`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "58722220",
+    "_collection_link": "https://go.postman.co/collection/58722220-e1b30713-7e35-49a6-b367-2db83c65d417?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "01 GET Daftar Buku (200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Response is an array of books', function () {",
+              "    const data = pm.response.json();",
+              "    pm.expect(data).to.be.an('array');",
+              "    pm.expect(data.length).to.be.at.least(2);",
+              "    pm.expect(data[0]).to.have.property('title');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/books",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "books"
+          ]
+        },
+        "description": "Ambil seluruh daftar buku. Data awal berisi buku id 1 dan id 2."
+      },
+      "response": []
+    },
+    {
+      "name": "02 GET Detail Buku (200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Detail buku id 1', function () {",
+              "    const data = pm.response.json();",
+              "    pm.expect(data.id).to.eql(1);",
+              "    pm.expect(data).to.have.property('title');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/books/1",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "books",
+            "1"
+          ]
+        },
+        "description": "Ambil detail buku berdasarkan id (buku seed pertama)."
+      },
+      "response": []
+    },
+    {
+      "name": "T6 GET ID Tidak Valid (400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {\n    pm.response.to.have.status(200);\n});\npm.test('Detail buku id 1', function () {\n    const data = pm.response.json();\n    pm.expect(data.id).to.eql(1);\n    pm.expect(data).to.have.property('title');\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/books/abc",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "books",
+            "abc"
+          ]
+        },
+        "description": "Ambil detail buku berdasarkan id (buku seed pertama)."
+      },
+      "response": []
+    },
+    {
+      "name": "03 POST Tambah Buku (201)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 201', function () {",
+              "    pm.response.to.have.status(201);",
+              "});",
+              "pm.test('Buku baru berhasil dibuat', function () {",
+              "    const data = pm.response.json();",
+              "    pm.expect(data).to.have.property('id');",
+              "    pm.expect(data.title).to.eql('Pemrograman Web Lanjut');",
+              "    pm.expect(data.isbn).to.eql('978-602-777-101-4');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Pemrograman Web Lanjut\",\n  \"author\": \"Sari Dewi\",\n  \"isbn\": \"978-602-777-101-4\",\n  \"year\": 2024,\n  \"category\": \"Informatika\",\n  \"stock\": 6,\n  \"available\": 6\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/books",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "books"
+          ]
+        },
+        "description": "Tambah buku baru (CreateBookDto: title wajib, sisanya opsional). ISBN 978-602-777-101-4 belum dipakai di seed."
+      },
+      "response": []
+    },
+    {
+      "name": "T6 POST ISBN Duplikat (409)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 201', function () {\n    pm.response.to.have.status(201);\n});\npm.test('Buku baru berhasil dibuat', function () {\n    const data = pm.response.json();\n    pm.expect(data).to.have.property('id');\n    pm.expect(data.title).to.eql('Pemrograman Web Lanjut');\n    pm.expect(data.isbn).to.eql('978-602-777-101-4');\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Pemrograman Web Lanjut\",\n  \"author\": \"Sari Dewi\",\n \"isbn\": \"978-602-123-456-7\",\n  \"year\": 2024,\n  \"category\": \"Informatika\",\n  \"stock\": 6,\n  \"available\": 6\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/books",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "books"
+          ]
+        },
+        "description": "Tambah buku baru (CreateBookDto: title wajib, sisanya opsional). ISBN 978-602-777-101-4 belum dipakai di seed."
+      },
+      "response": []
+    },
+    {
+      "name": "04 PUT Ganti Buku (200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Seluruh field buku id 1 terganti', function () {",
+              "    const data = pm.response.json();",
+              "    pm.expect(data.id).to.eql(1);",
+              "    pm.expect(data.title).to.eql('Pemrograman Algoritma dan Struktur Data (Edisi Revisi)');",
+              "    pm.expect(data.year).to.eql(2022);",
+              "    pm.expect(data.stock).to.eql(8);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Pemrograman Algoritma dan Struktur Data (Edisi Revisi)\",\n  \"author\": \"Budi Santoso\",\n  \"isbn\": \"978-602-123-456-7\",\n  \"year\": 2022,\n  \"category\": \"Informatika\",\n  \"stock\": 8,\n  \"available\": 5\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/books/1",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "books",
+            "1"
+          ]
+        },
+        "description": "Ganti seluruh data buku id 1 (replace penuh, pakai CreateBookDto)."
+      },
+      "response": []
+    },
+    {
+      "name": "05 PATCH Ubah Judul (200)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Judul berubah, field lain tetap', function () {",
+              "    const data = pm.response.json();",
+              "    pm.expect(data.id).to.eql(1);",
+              "    pm.expect(data.title).to.eql('Judul Baru');",
+              "    pm.expect(data.author).to.eql('Budi Santoso');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Judul Baru\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/books/1",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "books",
+            "1"
+          ]
+        },
+        "description": "Ubah sebagian field buku id 1 (UpdateBookDto = PartialType CreateBookDto)."
+      },
+      "response": []
+    },
+    {
+      "name": "06 DELETE Hapus Buku (204)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 204', function () {",
+              "    pm.response.to.have.status(204);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/books/2",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "books",
+            "2"
+          ]
+        },
+        "description": "Hapus buku id 2. Tanpa body, respons 204 No Content."
+      },
+      "response": []
+    },
+    {
+      "name": "07 GET Buku Tidak Ada (404)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 404', function () {\n    pm.response.to.have.status(404);\n});\npm.test('NotFound exception dari service', function () {\n    pm.expect(pm.response.json().statusCode).to.eql(404);\n});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/books/999",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "books",
+            "999"
+          ]
+        },
+        "description": "Buku id 999 tidak ada -> service melempar NotFoundException -> 404."
+      },
+      "response": []
+    },
+    {
+      "name": "08 POST Data Tidak Valid (400)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 400', function () {",
+              "    pm.response.to.have.status(400);",
+              "});",
+              "pm.test('Validasi menolak body tanpa title', function () {",
+              "    const data = pm.response.json();",
+              "    pm.expect(data.statusCode).to.eql(400);",
+              "    pm.expect(data.message).to.be.an('array').that.includes('title wajib diisi');",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"author\": \"Penulis Tanpa Judul\",\n  \"year\": 2024\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/books",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "books"
+          ]
+        },
+        "description": "Body tanpa title -> ValidationPipe global menolak (400), message 'title wajib diisi'."
+      },
+      "response": []
+    },
+    {
+      "name": "bulk sukses (commit)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "[\r\n  {\r\n    \"title\": \"Basis Data Dasar\",\r\n    \"author\": \"Rina Putri\",\r\n    \"isbn\": \"978-602-111-111-1\",\r\n    \"year\": 2022,\r\n    \"category\": \"Informatika\",\r\n    \"stock\": 4,\r\n    \"available\": 4\r\n  },\r\n  {\r\n    \"title\": \"Jaringan Komputer\",\r\n    \"author\": \"Dedi Prakoso\",\r\n    \"isbn\": \"978-602-222-222-2\",\r\n    \"year\": 2023,\r\n    \"category\": \"Informatika\",\r\n    \"stock\": 3,\r\n    \"available\": 3\r\n  }\r\n]",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/books/bulk",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "books",
+            "bulk"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "bulk gagal (rollback)",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "[\r\n  {\r\n    \"title\": \"Buku Harus Batal\",\r\n    \"author\": \"Tes Rollback\",\r\n    \"isbn\": \"978-602-333-333-3\",\r\n    \"year\": 2024,\r\n    \"category\": \"Informatika\",\r\n    \"stock\": 1,\r\n    \"available\": 1\r\n  },\r\n  {\r\n    \"title\": \"ISBN Duplikat\",\r\n    \"author\": \"Tes Rollback\",\r\n    \"isbn\": \"978-602-111-111-1\",\r\n    \"year\": 2024,\r\n    \"category\": \"Informatika\",\r\n    \"stock\": 1,\r\n    \"available\": 1\r\n  }\r\n]",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/books/bulk",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "books",
+            "bulk"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000"
+    }
+  ]
+}

@@ -14,12 +14,12 @@ export class BooksService {
   // lalu menyuntikkannya ke sini — tidak ada `new BooksRepository()`.
   constructor(private readonly booksRepository: BooksRepository) {}
 
-  findAll(): Book[] {
+  findAll(): Promise<Book[]> {
     return this.booksRepository.findAll();
   }
 
-  findOne(id: number): Book {
-    const book = this.booksRepository.findById(id);
+  async findOne(id: number): Promise<Book> {
+    const book = await this.booksRepository.findById(id);
     if (!book) {
       // Melempar NotFoundException -> otomatis jadi respons 404 oleh Nest
       throw new NotFoundException(`Buku dengan id ${id} tidak ditemukan`);
@@ -27,28 +27,32 @@ export class BooksService {
     return book;
   }
 
-  create(dto: CreateBookDto): Book {
+  create(dto: CreateBookDto): Promise<Book> {
     return this.booksRepository.create(dto);
   }
 
-  replace(id: number, dto: CreateBookDto): Book {
-    const book = this.booksRepository.save(id, dto);
+  createBulk(dtos: CreateBookDto[]): Promise<Book[]> {
+    return this.booksRepository.createBulk(dtos);
+  }
+
+  async replace(id: number, dto: CreateBookDto): Promise<Book> {
+    const book = await this.booksRepository.save(id, dto);
     if (!book) {
       throw new NotFoundException(`Buku dengan id ${id} tidak ditemukan`);
     }
     return book;
   }
 
-  update(id: number, dto: UpdateBookDto): Book {
-    const book = this.booksRepository.merge(id, dto);
+  async update(id: number, dto: UpdateBookDto): Promise<Book> {
+    const book = await this.booksRepository.merge(id, dto);
     if (!book) {
       throw new NotFoundException(`Buku dengan id ${id} tidak ditemukan`);
     }
     return book;
   }
 
-  remove(id: number): void {
-    const removed = this.booksRepository.remove(id);
+  async remove(id: number): Promise<void> {
+    const removed = await this.booksRepository.remove(id);
     if (!removed) {
       throw new NotFoundException(`Buku dengan id ${id} tidak ditemukan`);
     }

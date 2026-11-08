@@ -12,7 +12,7 @@ describe('BooksService', () => {
       providers: [
         BooksService,
         {
-          // Repository di-mock: logika in-memory tidak dijalankan,
+          // Repository di-mock: koneksi database tidak dijalankan,
           // kita hanya memverifikasi interaksi service <-> repository
           // dan perilaku (throw NotFoundException, dsb).
           provide: BooksRepository,
@@ -32,7 +32,7 @@ describe('BooksService', () => {
     repository = module.get<jest.Mocked<BooksRepository>>(BooksRepository);
   });
 
-  it('create: mengembalikan buku dengan id', () => {
+  it('create: mengembalikan buku dengan id', async () => {
     const dto = {
       title: 'Buku Baru',
       author: 'Penulis Baru',
@@ -42,9 +42,9 @@ describe('BooksService', () => {
       stock: 3,
       available: 3,
     };
-    repository.create.mockReturnValue({ id: 109, ...dto });
+    repository.create.mockResolvedValue({ id: 109, ...dto });
 
-    const result = service.create(dto);
+    const result = await service.create(dto);
 
     expect(result.id).toBeDefined();
     expect(result.id).toEqual(expect.any(Number));
@@ -52,17 +52,17 @@ describe('BooksService', () => {
     expect(repository.create).toHaveBeenCalledWith(dto);
   });
 
-  it('findOne: id yang tidak ada melempar NotFoundException', () => {
-    repository.findById.mockReturnValue(undefined);
+  it('findOne: id yang tidak ada melempar NotFoundException', async () => {
+    repository.findById.mockResolvedValue(undefined);
 
-    expect(() => service.findOne(999)).toThrow(NotFoundException);
+    await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
     expect(repository.findById).toHaveBeenCalledWith(999);
   });
 
-  it('remove: buku yang ada berhasil dihapus', () => {
-    repository.remove.mockReturnValue(true);
+  it('remove: buku yang ada berhasil dihapus', async () => {
+    repository.remove.mockResolvedValue(true);
 
-    expect(() => service.remove(1)).not.toThrow();
+    await expect(service.remove(1)).resolves.toBeUndefined();
     expect(repository.remove).toHaveBeenCalledWith(1);
   });
 });

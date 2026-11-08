@@ -1,133 +1,95 @@
 # Sistem Perpustakaan API
 
-REST API untuk Sistem Perpustakaan yang dibangun dengan **NestJS** dan TypeScript. Proyek ini menyediakan modul **`books`** — operasi CRUD lengkap untuk data buku (`id`, `title`, `author`, `isbn`, `year`, `category`, `stock`, `available`). Saat ini data disimpan **in-memory** lewat repository yang terisolasi, sehingga nanti bisa diganti ke PostgreSQL tanpa mengubah controller maupun service. Validasi body memakai `class-validator` + `class-transformer` yang dipasang sebagai `ValidationPipe` global.
+REST API untuk Sistem Perpustakaan yang dibangun dengan **NestJS** dan TypeScript, terhubung ke **PostgreSQL** melalui **TypeORM**. Modul `books` menyediakan operasi CRUD, endpoint `POST /books/bulk` (satu transaksi database), validasi DTO, serta penanganan error terformat seragam.
 
-## Struktur Folder `src/books`
+> Detail bukti (struktur tabel/constraint, migration, contoh error 400/404/409, transaksi bulk, dan ringkasan test) ada di [`docs/bukti-database.md`](docs/bukti-database.md).
+
+## Fitur utama
+
+- **Database**: PostgreSQL + TypeORM, `synchronize: false`, perubahan skema lewat migration.
+- **Validasi**: `class-validator` + `class-transformer` (global `ValidationPipe`, `whitelist` + `transform`). `title`, `author`, `isbn` wajib; `year` integer berbatas wajar; `stock`/`available` integer ≥ 0. `:id` divalidasi `ParseIntPipe`.
+- **Error seragam** (global `HttpExceptionFilter`): `{ statusCode, error, message, path, timestamp }` untuk 400/404/409/dll.
+- **409 Conflict**: pelanggaran `UNIQUE` PostgreSQL (ISBN duplikat, kode `23505`) dipetakan ke 409.
+- **Transaksi bulk**: `POST /books/bulk` menyimpan array buku secara atomik (semua berhasil → commit, satu gagal → rollback).
+
+## Struktur folder (ringkas)
 
 ```
 src/
-├── main.ts                 # bootstrap + ValidationPipe global (whitelist, transform)
-├── app.module.ts           # mendaftarkan BooksModule
+├── main.ts                         # bootstrap + ValidationPipe + HttpExceptionFilter global
+├── app.module.ts                   # ConfigModule + TypeOrmModule.forRootAsync
+├── data-source.ts                  # DataSource CLI TypeORM (migration)
+├── common/filters/
+│   └── http-exception.filter.ts    # format error seragam
+├── migrations/
+│   └── 1794150511860-CreateBooks.ts
 └── books/
-    ├── books.module.ts     # deklarasi controller & provider modul books
-    ├── books.controller.ts # lapisan HTTP (endpoint /books)
-    ├── books.service.ts    # logika bisnis
-    ├── books.repository.ts # penyimpanan in-memory (interface Book)
+    ├── books.module.ts
+    ├── books.controller.ts         # endpoint /books (+ /books/bulk)
+    ├── books.service.ts            # logika bisnis (NotFoundException)
+    ├── books.repository.ts         # TypeORM: CRUD + createBulk (transaksi, 23505→409)
+    ├── entities/book.entity.ts     # entity/tabel books
     └── dto/
-        ├── create-book.dto.ts   # DTO untuk POST & PUT
-        └── update-book.dto.ts   # DTO untuk PATCH
+        ├── create-book.dto.ts      # DTO POST & PUT
+        └── update-book.dto.ts      # DTO PATCH (PartialType)
 ```
 
-| File | Fungsi |
-|------|--------|
-| `books.module.ts` | Modul yang mengikat `BooksController`, `BooksService`, dan `BooksRepository`. Didaftarkan di `AppModule` agar endpoint `/books` aktif. |
-| `books.controller.ts` | Menerima request HTTP (`POST`, `GET`, `PUT`, `PATCH`, `DELETE`), mem-parsing param & body (termasuk `ParseIntPipe` untuk `:id`), lalu memanggil service. Mengembalikan status 201 (POST), 200, 204 (DELETE). |
-| `books.service.ts` | Logika bisnis: membuat, mencari, mengganti, menghapus buku. Melempar `NotFoundException` bila buku tidak ditemukan (otomatis jadi respons 404). |
-| `books.repository.ts` | Penyimpanan in-memory (array + seed buku id 1 & 2, `nextId = 109`). Class terpisah yang di-inject ke service — kelak tinggal diganti implementasi PostgreSQL dengan antarmuka metode yang sama. |
-| `dto/create-book.dto.ts` | `CreateBookDto` untuk POST/PUT. Hanya `title` wajib (`@IsString` + `@IsNotEmpty`); field lain opsional dengan validasi tipe (`year`, `stock`, `available` harus integer ≥ 0). |
-| `dto/update-book.dto.ts` | `UpdateBookDto` untuk PATCH, dibuat dengan `PartialType(CreateBookDto)` sehingga semua field menjadi opsional. |
+## Setup database
 
-## Instalasi dan Menjalankan
+Prasyarat: PostgreSQL berjalan (contoh lokal `localhost:5432`). Path `psql` di Windows: `C:\Program Files\PostgreSQL\18\bin\psql.exe`.
+
+1. **Buat database** `perpustakaan` dan `perpustakaan_test` (sekali):
+   ```powershell
+   & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -h localhost -c "CREATE DATABASE perpustakaan;"
+   & "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U postgres -h localhost -c "CREATE DATABASE perpustakaan_test;"
+   ```
+2. **Salin konfigurasi env** dari contoh, lalu isi nilainya (jangan commit `.env`/`.env.test`):
+   ```powershell
+   Copy-Item .env.example .env
+   # opsional, untuk suite test: salin/isi .env.test dengan DB_NAME=perpustakaan_test
+   ```
+   Variabel: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`.
+3. **Pasang dependency & jalankan migration** (membuat tabel `books` + seed):
+   ```bash
+   npm install
+   npm run migration:run
+   ```
+   (Untuk database test: set `DB_NAME=perpustakaan_test` lalu `npm run migration:run`, atau biarkan suite e2e yang memakai `.env.test`.)
+
+## Menjalankan aplikasi
 
 ```bash
-npm install          # pasang dependency (termasuk class-validator, class-transformer)
-npm run start:dev    # jalankan dalam mode watch (development)
-```
-
-Aplikasi berjalan di `http://localhost:3000`. Perintah lain:
-
-```bash
+npm run start:dev    # mode watch (development) — http://localhost:3000
 npm run build        # kompilasi ke dist/
-npm start            # jalankan sekali tanpa watch
-npm run start:prod   # jalankan hasil build untuk produksi
+npm run start:prod   # jalankan hasil build
 ```
 
-## Daftar Endpoint
+## Daftar endpoint
 
-| Method | URL | Fungsi | Status Sukses | Status Gagal |
-|--------|-----|--------|---------------|--------------|
-| `POST` | `/books` | Tambah buku baru | `201 Created` | `400` (body tanpa `title` / tipe salah) |
-| `GET` | `/books` | Ambil seluruh daftar buku | `200 OK` | — |
-| `GET` | `/books/:id` | Ambil detail satu buku | `200 OK` | `404` (tidak ada), `400` (`:id` bukan angka) |
-| `PUT` | `/books/:id` | Ganti seluruh data buku | `200 OK` | `400`, `404` |
-| `PATCH` | `/books/:id` | Ubah sebagian field buku | `200 OK` | `400`, `404` |
-| `DELETE` | `/books/:id` | Hapus buku | `204 No Content` | `404` |
+| Method | URL | Fungsi | Status sukses | Status gagal |
+|---|---|---|---:|---|
+| `POST` | `/books` | Tambah satu buku | 201 | 400 (validasi), 409 (ISBN duplikat) |
+| `POST` | `/books/bulk` | Tambah banyak buku **dalam satu transaksi** (atomik) | 201 | 400 (validasi elemen), 409 (duplikat → rollback seluruh batch) |
+| `GET` | `/books` | Ambil seluruh daftar buku | 200 | — |
+| `GET` | `/books/:id` | Ambil detail satu buku | 200 | 400 (`:id` bukan angka), 404 |
+| `PUT` | `/books/:id` | Ganti seluruh data buku | 200 | 400, 404, 409 |
+| `PATCH` | `/books/:id` | Ubah sebagian field buku | 200 | 400, 404, 409 |
+| `DELETE` | `/books/:id` | Hapus buku | 204 | 400, 404 |
 
-## Contoh Request & Response
+> Semua error berformat `{ statusCode, error, message, path, timestamp }`. Contoh respons 400/404/409: lihat [`docs/bukti-database.md`](docs/bukti-database.md#3-contoh-response-400-404-dan-409).
 
-### POST `/books` — 201 Created
-
-```bash
-curl -X POST http://localhost:3000/books \
-  -H "Content-Type: application/json" \
-  -d '{"title":"Buku Baru","author":"Penulis","isbn":"978-602-111-222-3","year":2025,"category":"Informatika","stock":1,"available":1}'
-```
-
-```json
-{
-  "id": 109,
-  "title": "Buku Baru",
-  "author": "Penulis",
-  "isbn": "978-602-111-222-3",
-  "year": 2025,
-  "category": "Informatika",
-  "stock": 1,
-  "available": 1
-}
-```
-
-### POST `/books` tanpa `title` — 400 Bad Request
-
-```bash
-curl -X POST http://localhost:3000/books \
-  -H "Content-Type: application/json" \
-  -d '{"author":"Penulis Tanpa Judul"}'
-```
-
-```json
-{
-  "message": ["title wajib diisi", "title must be a string"],
-  "error": "Bad Request",
-  "statusCode": 400
-}
-```
-
-### GET `/books/999` — 404 Not Found
-
-```bash
-curl http://localhost:3000/books/999
-```
-
-```json
-{
-  "message": "Buku dengan id 999 tidak ditemukan",
-  "error": "Not Found",
-  "statusCode": 404
-}
-```
-
-## Menjalankan Test
+## Menjalankan test
 
 ```bash
 npm test              # unit test (Jest): src/**/*.spec.ts
-npm run test:e2e      # E2E test (Jest + supertest): test/*.e2e-spec.ts
+npm run test:e2e      # E2E (Jest + supertest): test/*.e2e-spec.ts
 ```
 
-- **Unit test** — `src/books/books.service.spec.ts` menguji service dengan `BooksRepository` yang di-mock: create mengembalikan buku ber-id, `findOne` id tak ada melempar `NotFoundException`, dan remove berhasil.
-- **E2E test** — `test/books.e2e-spec.ts` membuat instance aplikasi sendiri lewat supertest (tanpa membuka port 3000) dan memasang `ValidationPipe` yang sama seperti `main.ts`: POST valid → 201, POST tanpa `title` → 400, GET `/books/999` → 404, GET `/books` → 200 berupa array.
+- **Unit** — `src/books/books.service.spec.ts`: service diuji dengan repository di-mock.
+- **E2E** — dijalankan terhadap **`perpustakaan_test`** (dipaksa oleh `test/jest-setup.ts`, `NODE_ENV=test` + `.env.test`; `maxWorkers: 1`). `test/books.e2e-spec.ts` menguji alur CRUD; `test/books-failure.e2e-spec.ts` menguji skenario gagal (400/404/409) dan membuktikan **rollback** `POST /books/bulk` (batch gagal → tidak ada baris tersimpan).
 
-## Dependency Injection
+## Bukti pengujian
 
-Modul ini memperlihatkan alur dependency injection khas NestJS dari lapisan ke lapisan: `BooksController` menerima `BooksService` lewat constructor, dan `BooksService` menerima `BooksRepository` lewat constructor — NestJS yang membuat instance tiap provider (terdaftar di `books.module.ts`) lalu menyuntikkannya, sehingga tidak ada pemanggilan `new` di kode aplikasi. Controller hanya tahu soal HTTP, service hanya tahu soal logika bisnis, dan repository hanya tahu soal penyimpanan; konsekuensinya, mengganti penyimpanan in-memory ke PostgreSQL cukup dengan menukar implementasi `BooksRepository` di module tanpa mengubah satu baris pun pada controller atau service.
-
-## Bukti Pengujian
-
-| Bukti | Lokasi |
-|-------|--------|
-| Postman Collection (8 request CRUD, v2.1) | [`postman/crud.postman_collection.json`](postman/crud.postman_collection.json) |
-| Screenshot 8 request Postman | `screenshot/crud-01-get-daftar-200.png` … `screenshot/crud-08-post-400.png` |
-| Screenshot hasil unit test | `screenshot/hasil-test-unit.png` |
-| Screenshot hasil E2E test | `screenshot/hasil-test-e2e.png` |
-| Screenshot struktur project | `screenshot/struktur-project.png` |
-
-Cara pakai collection: jalankan server (`npm run start:dev`), lalu import `postman/crud.postman_collection.json` ke Postman — variabel collection `base_url` sudah di-set ke `http://localhost:3000`.
+- Dokumen bukti lengkap: [`docs/bukti-database.md`](docs/bukti-database.md)
+- Postman Collection: [`postman/crud.postman_collection.json`](postman/crud.postman_collection.json) (import ke Postman, `base_url` = `http://localhost:3000`, jalankan server lebih dulu)
+- Screenshot: folder [`screenshot/`](screenshot/) (CRUD, error 400/404/409, bulk sukses/rollback, hasil test, struktur tabel/migration).

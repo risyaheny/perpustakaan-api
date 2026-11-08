@@ -2,7 +2,10 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
+import { DataSource } from 'typeorm';
+import { AppModule } from '../src/app.module';
+import { Book } from '../src/books/entities/book.entity';
+import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 
 describe('Books (e2e)', () => {
   let app: INestApplication<App>;
@@ -14,14 +17,36 @@ describe('Books (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
 
-    // ValidationPipe global yang sama seperti di main.ts
     app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        transform: true,
-      }),
+      new ValidationPipe({ whitelist: true, transform: true }),
     );
+    app.useGlobalFilters(new HttpExceptionFilter());
     await app.init();
+
+    // Seed data deterministik (DB test, dipaksa oleh test/jest-setup.ts).
+    // Bersihkan + isi 2 baris agar test ini tidak bergantung pada urutan file e2e.
+    const ds = app.get(DataSource);
+    await ds.query('TRUNCATE TABLE "books" RESTART IDENTITY CASCADE');
+    await ds.getRepository(Book).save([
+      {
+        title: 'Pemrograman Algoritma dan Struktur Data',
+        author: 'Budi Santoso',
+        isbn: '978-seed-1',
+        year: 2021,
+        category: 'Informatika',
+        stock: 5,
+        available: 3,
+      },
+      {
+        title: 'Dasar Algoritma Pemrograman',
+        author: 'Ani Wijaya',
+        isbn: '978-seed-2',
+        year: 2020,
+        category: 'Informatika',
+        stock: 2,
+        available: 0,
+      },
+    ]);
   });
 
   afterAll(async () => {
@@ -34,7 +59,7 @@ describe('Books (e2e)', () => {
       .send({
         title: 'Buku E2E',
         author: 'Tester',
-        isbn: '978-602-888-222-3',
+        isbn: `978-602-888-222-${Date.now()}`,
         year: 2025,
         category: 'Informatika',
         stock: 4,
@@ -44,13 +69,13 @@ describe('Books (e2e)', () => {
       .expect((res) => {
         expect(res.body).toHaveProperty('id');
         expect(res.body.title).toBe('Buku E2E');
-        expect(res.body.isbn).toBe('978-602-888-222-3');
+        expect(res.body.isbn).toMatch(/^978-602-888-222-\d+$/);
       }));
 
   it('POST /books tanpa title -> 400', () =>
     request(app.getHttpServer())
       .post('/books')
-      .send({ author: 'Tanpa Judul', year: 2024 })
+      .send({ author: 'Tanpa Judul', isbn: '978-no-title', year: 2024 })
       .expect(400)
       .expect((res) => {
         expect(res.body.statusCode).toBe(400);
