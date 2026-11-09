@@ -270,12 +270,14 @@ components:
           description: ISBN unik (wajib)
         year:
           type: number
+          nullable: true
           example: 2005
           minimum: 1000
           maximum: 2100
           description: Tahun terbit
         category:
           type: string
+          nullable: true
           example: Fiksi
           description: Kategori
         stock:
@@ -312,14 +314,14 @@ components:
           example: Budi Santoso
           description: Penulis
         year:
-          type: object
-          example: 2021
+          type: number
           nullable: true
+          example: 2021
           description: Tahun terbit
         category:
-          type: object
-          example: Informatika
+          type: string
           nullable: true
+          example: Informatika
           description: Kategori
         stock:
           type: number
@@ -382,12 +384,14 @@ components:
           description: ISBN unik (wajib)
         year:
           type: number
+          nullable: true
           example: 2005
           minimum: 1000
           maximum: 2100
           description: Tahun terbit
         category:
           type: string
+          nullable: true
           example: Fiksi
           description: Kategori
         stock:

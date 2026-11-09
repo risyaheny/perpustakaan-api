@@ -17,12 +17,18 @@ export class BookResponseDto {
   @ApiProperty({ example: 'Budi Santoso', description: 'Penulis' })
   author: string;
 
-  @ApiPropertyOptional({ example: 2021, nullable: true, description: 'Tahun terbit' })
+  @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
+    example: 2021,
+    description: 'Tahun terbit',
+  })
   year?: number | null;
 
   @ApiPropertyOptional({
-    example: 'Informatika',
+    type: String,
     nullable: true,
+    example: 'Informatika',
     description: 'Kategori',
   })
   category?: string | null;

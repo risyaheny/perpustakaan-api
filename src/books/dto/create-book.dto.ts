@@ -23,6 +23,8 @@ export class CreateBookDto {
   isbn: string;
 
   @ApiPropertyOptional({
+    type: Number,
+    nullable: true,
     example: 2005,
     minimum: 1000,
     maximum: 2100,
@@ -34,7 +36,12 @@ export class CreateBookDto {
   @Max(2100, { message: 'year maksimal 2100' })
   year?: number;
 
-  @ApiPropertyOptional({ example: 'Fiksi', description: 'Kategori' })
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    example: 'Fiksi',
+    description: 'Kategori',
+  })
   @IsOptional()
   @IsString()
   category?: string;

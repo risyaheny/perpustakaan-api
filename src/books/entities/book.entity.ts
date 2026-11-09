@@ -1,3 +1,4 @@
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 /**
@@ -25,9 +26,11 @@ export class Book {
   @Column()
   author: string;
 
+  @ApiPropertyOptional({ type: Number, nullable: true, example: 2021 })
   @Column({ type: 'int', nullable: true })
   year?: number;
 
+  @ApiPropertyOptional({ type: String, nullable: true, example: 'Informatika' })
   @Column({ type: 'varchar', nullable: true })
   category?: string;
 
